@@ -1,0 +1,52 @@
+{
+  "name": "@megaeth/mpp",
+  "version": "0.1.0",
+  "description": "MegaETH payment method for the Machine Payments Protocol (MPP)",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    },
+    "./server": {
+      "import": "./dist/server/index.js",
+      "types": "./dist/server/index.d.ts"
+    },
+    "./client": {
+      "import": "./dist/client/index.js",
+      "types": "./dist/client/index.d.ts"
+    }
+  },
+  "scripts": {
+    "build": "tsc",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint src/",
+    "clean": "rm -rf dist"
+  },
+  "keywords": [
+    "megaeth",
+    "mpp",
+    "payments",
+    "permit2",
+    "x402",
+    "evm",
+    "web3"
+  ],
+  "author": "MegaETH Labs",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/crumb-trail/mpp-sdk.git"
+  },
+  "dependencies": {
+    "viem": "^2.21.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0",
+    "vitest": "^3.0.0"
+  }
+}
