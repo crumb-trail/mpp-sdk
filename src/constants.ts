@@ -11,13 +11,18 @@ export const RPC_URLS: Record<string, string> = {
 
 // Canonical contract addresses (same on mainnet + testnet via CREATE2)
 export const PERMIT2 = '0x000000000022D473030F116dDEE9F6B43aC78BA3' as const;
-export const EXACT_PROXY = '0x402085c248EeA27D92E8b30b2C58ed07f9E20001' as const;
-export const UPTO_PROXY = '0x402039b3d6E6BEC5A02c2C9fd937ac17A6940002' as const;
+
+// x402 Permit2 Proxy contracts
+export const X402_EXACT_PROXY = '0x402085c248EeA27D92E8b30b2C58ed07f9E20001' as const;
+export const X402_UPTO_PROXY = '0x402039b3d6E6BEC5A02c2C9fd937ac17A6940002' as const;
+
+// Legacy exports for backwards compatibility
+export const EXACT_PROXY = X402_EXACT_PROXY;
+export const UPTO_PROXY = X402_UPTO_PROXY;
 
 // Known tokens
-export const USDM: Record<string, string> = {
-  mainnet: '0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7',
-};
+export const USDM = '0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7' as const;
+export const USDM_DECIMALS = 18 as const;
 
 // Permit2 witness types for EIP-712 signing
 export const EXACT_WITNESS_TYPE_STRING =

@@ -1,2 +1,1 @@
-export { ChargeClient } from './Charge.js';
-export type { ChargeClientOptions } from './Charge.js';
+export { PaymentClient } from './PaymentClient.js';

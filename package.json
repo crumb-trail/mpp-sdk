@@ -1,7 +1,7 @@
 {
-  "name": "@megaeth/mpp",
+  "name": "@megaeth/payments",
   "version": "0.1.0",
-  "description": "MegaETH payment method for the Machine Payments Protocol (MPP)",
+  "description": "Unified TypeScript payments SDK for MegaETH - supports x402 and MPP protocols",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -17,6 +17,14 @@
     "./client": {
       "import": "./dist/client/index.js",
       "types": "./dist/client/index.d.ts"
+    },
+    "./protocols/x402": {
+      "import": "./dist/protocols/x402/index.js",
+      "types": "./dist/protocols/x402/index.d.ts"
+    },
+    "./protocols/mpp": {
+      "import": "./dist/protocols/mpp/index.js",
+      "types": "./dist/protocols/mpp/index.d.ts"
     }
   },
   "scripts": {

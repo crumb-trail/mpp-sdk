@@ -1,6 +1,60 @@
 import type { Address, Hex } from 'viem';
 
-// ── Request (server → client in 402 challenge) ─────────────────────
+// ── Shared types across protocols ──────────────────────────────────
+
+/**
+ * Supported payment protocols
+ */
+export type PaymentProtocol = 'x402' | 'mpp';
+
+/**
+ * Base payment configuration
+ */
+export interface PaymentConfig {
+  /** Private key or viem account */
+  privateKey?: Hex;
+  /** Chain ID (default: 4326) */
+  chainId?: number;
+  /** RPC URL override */
+  rpcUrl?: string;
+}
+
+/**
+ * Client configuration for unified PaymentClient
+ */
+export interface ClientConfig extends PaymentConfig {}
+
+/**
+ * Server configuration for unified PaymentServer
+ */
+export interface ServerConfig extends PaymentConfig {
+  /** Recipient address for payments */
+  recipient: Address;
+  /** Token address */
+  asset: Address;
+  /** Token decimals */
+  decimals: number;
+  /** Protocols to support (default: ['x402', 'mpp']) */
+  protocols?: PaymentProtocol[];
+  /** Sponsor gas for clients */
+  feePayer?: boolean;
+  /** Challenge/payment timeout in seconds (default: 300) */
+  timeoutSeconds?: number;
+}
+
+/**
+ * Payment splits for complex payment routing
+ */
+export interface PaymentSplit {
+  /** Split recipient address */
+  recipient: Address;
+  /** Amount in base units */
+  amount: string;
+  /** Human-readable label */
+  memo?: string;
+}
+
+// ── Legacy MPP types (keep for backwards compatibility) ────────────
 
 export interface ChargeRequest {
   /** Amount in base units (decimal string) */
@@ -39,8 +93,6 @@ export interface Split {
   memo?: string;
 }
 
-// ── Credential payload (client → server in Authorization header) ───
-
 export type ChargeCredentialPayload =
   | Permit2Payload
   | HashPayload;
@@ -67,8 +119,6 @@ export interface HashPayload {
   hash: Hex;
 }
 
-// ── Credential (full Authorization header content) ─────────────────
-
 export interface ChargeCredential {
   challenge: {
     id: string;
@@ -82,8 +132,6 @@ export interface ChargeCredential {
   source?: string;
 }
 
-// ── Receipt (server → client after settlement) ─────────────────────
-
 export interface ChargeReceipt {
   method: 'megaeth';
   challengeId: string;
@@ -93,8 +141,6 @@ export interface ChargeReceipt {
   externalId?: string;
 }
 
-// ── Challenge (402 response) ───────────────────────────────────────
-
 export interface Challenge {
   id: string;
   realm: string;
@@ -102,32 +148,4 @@ export interface Challenge {
   intent: 'charge';
   request: ChargeRequest;
   expires: string;
-}
-
-// ── SDK configuration ──────────────────────────────────────────────
-
-export interface ServerConfig {
-  /** Private key or viem account for submitting settlement txs */
-  privateKey?: Hex;
-  /** Chain ID (default: 4326) */
-  chainId?: number;
-  /** RPC URL override */
-  rpcUrl?: string;
-  /** Recipient address for payments */
-  recipient: Address;
-  /** Token address */
-  asset: Address;
-  /** Token decimals */
-  decimals: number;
-  /** Sponsor gas for clients */
-  feePayer?: boolean;
-}
-
-export interface ClientConfig {
-  /** Private key or viem account for signing Permit2 messages */
-  privateKey?: Hex;
-  /** Chain ID (default: 4326) */
-  chainId?: number;
-  /** RPC URL override */
-  rpcUrl?: string;
 }

@@ -1,125 +1,125 @@
-# @megaeth/mpp
+# @megaeth/payments
 
-MegaETH payment method for the [Machine Payments Protocol](https://mpp.dev).
+Unified payments SDK for MegaETH. Supports both [x402](https://github.com/coinbase/x402) (Coinbase, live today) and [MPP](https://paymentauth.org) (Machine Payments Protocol, coming soon).
 
-**MPP** is [an open protocol proposal](https://paymentauth.org) that lets any HTTP API accept payments using the `402 Payment Required` flow.
+One API. Two protocols. Auto-detection.
 
 > [!IMPORTANT]
-> This repository is under active development. The [MegaETH MPP spec](https://github.com/tempoxyz/mpp-specs) is not yet finalized — APIs and wire formats are subject to change.
+> Under active development. The [MegaETH MPP spec](https://github.com/tempoxyz/mpp-specs) is pending approval — MPP wire formats may change. x402 support is stable.
 
 ## Install
 
 ```bash
-npm install @megaeth/mpp
+npm install @megaeth/payments
 ```
 
-## Features
+## Why Two Protocols?
 
-**Charge** (one-time payments)
-- ERC-20 token transfers via Permit2 (works with any token)
-- Two settlement modes: Permit2 signature (default) and tx hash
-- Fee sponsorship: server pays gas (<$0.001 on MegaETH)
-- Split payments: distribute one charge across multiple recipients
-- Sub-50ms settlement with MegaETH's 10ms block times
+- **x402** works today — Coinbase SDK, CDP facilitators, live ecosystem
+- **MPP** is the next standard — HTTP-native, IETF-style spec, growing adoption
 
-## Architecture
-
-```
-@megaeth/mpp
-├── src/
-│   ├── index.ts          # Shared types, constants, chain defs
-│   ├── types.ts          # TypeScript interfaces
-│   ├── constants.ts      # Addresses, chain IDs, RPCs
-│   ├── client/
-│   │   └── Charge.ts     # Client: sign Permit2, auto-pay 402s
-│   ├── server/
-│   │   └── Charge.ts     # Server: challenge, verify, settle
-│   └── utils/
-│       ├── permit2.ts    # Permit2 EIP-712 helpers + ABIs
-│       ├── encoding.ts   # Base64url encoding (RFC 4648)
-│       └── chain.ts      # MegaETH chain definitions (viem)
-```
-
-**Exports:**
-- `@megaeth/mpp` — shared types, constants, chain definitions, and Permit2 utilities
-- `@megaeth/mpp/server` — server-side charge (challenge + settle)
-- `@megaeth/mpp/client` — client-side charge (sign + auto-pay)
+This SDK handles both so you don't have to pick a winner. Your server serves both, your client pays either.
 
 ## Quick Start
 
-### Server
+### Client (auto-detects protocol)
 
 ```typescript
-import { ChargeServer } from '@megaeth/mpp/server';
+import { PaymentClient } from '@megaeth/payments/client';
 
-const server = new ChargeServer({
-  privateKey: process.env.PRIVATE_KEY as `0x${string}`,
-  recipient: '0xYourWalletAddress',
-  asset: '0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7', // USDm
-  decimals: 18,
-});
-
-// In your request handler:
-app.get('/api/resource', async (req, res) => {
-  const authHeader = req.headers['authorization'];
-
-  if (!authHeader?.startsWith('Payment ')) {
-    // Return 402 challenge
-    const challenge = server.createChallenge('1000000000000000000', {
-      description: '1 USDm for API access',
-    });
-    return res.status(402).set(challenge.headers).json({
-      paymentRequirements: [challenge.request],
-    });
-  }
-
-  // Verify and settle payment
-  const credential = JSON.parse(atob(authHeader.slice(8)));
-  const receipt = await server.settle(credential);
-  
-  res.set('Payment-Receipt', btoa(JSON.stringify(receipt)));
-  res.json({ data: 'protected content' });
-});
-```
-
-### Client
-
-```typescript
-import { ChargeClient } from '@megaeth/mpp/client';
-
-const client = new ChargeClient({
+const client = new PaymentClient({
   privateKey: process.env.PRIVATE_KEY as `0x${string}`,
 });
 
-// Automatic 402 handling
+// Automatically handles x402 or MPP based on server response
 const response = await client.fetch('https://api.example.com/resource');
 const data = await response.json();
 ```
 
-### Manual Signing
+### Server (serves both protocols)
 
 ```typescript
-import { ChargeClient } from '@megaeth/mpp/client';
-import type { Challenge } from '@megaeth/mpp';
+import { PaymentServer } from '@megaeth/payments/server';
 
-const client = new ChargeClient({
+const server = new PaymentServer({
   privateKey: process.env.PRIVATE_KEY as `0x${string}`,
+  recipient: '0xYourWallet',
+  asset: '0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7', // USDm
+  decimals: 18,
+  protocols: ['x402', 'mpp'],
 });
 
-// Sign a challenge manually
-const credential = await client.sign(challenge);
+// Express middleware
+app.get('/api/resource', async (req, res) => {
+  // Creates challenges for both protocols
+  const challenges = server.createChallenge('1000000000000000000', {
+    realm: req.hostname,
+    description: '1 USDm for API access',
+    resource: {
+      url: `${req.protocol}://${req.get('host')}${req.originalUrl}`,
+    },
+  });
 
-// Send with custom logic
-const response = await fetch(url, {
-  headers: {
-    Authorization: `Payment ${btoa(JSON.stringify(credential))}`,
-  },
+  // Check for payment
+  const payment = req.headers['x-payment']
+    || req.headers['authorization'];
+
+  if (!payment) {
+    return res.status(402)
+      .set(challenges.headers)
+      .json(challenges.body);
+  }
+
+  // Settle (auto-detects protocol from payload)
+  const receipt = await server.settle(payment);
+  res.json({ data: 'protected content' });
 });
 ```
 
+### Use a single protocol
+
+```typescript
+// x402 only
+import { X402Client } from '@megaeth/payments/protocols/x402';
+const client = new X402Client({ privateKey: '0x...' });
+
+// MPP only
+import { MPPClient } from '@megaeth/payments/protocols/mpp';
+const client = new MPPClient({ privateKey: '0x...' });
+```
+
+## Architecture
+
+```
+@megaeth/payments
+├── src/
+│   ├── index.ts              # Shared exports
+│   ├── constants.ts          # Addresses, chain IDs, RPCs
+│   ├── client/
+│   │   └── PaymentClient.ts  # Unified client (auto-detects protocol)
+│   ├── server/
+│   │   └── PaymentServer.ts  # Unified server (serves both)
+│   ├── protocols/
+│   │   ├── x402/             # x402 client + server
+│   │   └── mpp/              # MPP client + server
+│   └── utils/
+│       ├── permit2.ts        # Shared Permit2 EIP-712 + ABIs
+│       ├── encoding.ts       # Base64url (RFC 4648)
+│       └── chain.ts          # MegaETH viem chain definitions
+```
+
+Both protocols share the same Permit2 signing and settlement layer. The difference is HTTP framing:
+
+| | x402 | MPP |
+|---|---|---|
+| **Challenge** | JSON body with `accepts[]` | `WWW-Authenticate: Payment` header |
+| **Payment** | `X-PAYMENT` header (JSON) | `Authorization: Payment` header (base64url) |
+| **Receipt** | JSON in response | `Payment-Receipt` header |
+| **Settlement** | Same (Permit2Proxy) | Same (Permit2Proxy) |
+
 ## Deployed Contracts
 
-All contracts are deployed to the same canonical addresses on mainnet and testnet via deterministic CREATE2.
+Same canonical addresses on mainnet and testnet (deterministic CREATE2):
 
 | Contract | Address |
 |----------|---------|
@@ -138,7 +138,16 @@ All contracts are deployed to the same canonical addresses on mainnet and testne
 |-------|---------|----------|
 | USDm | `0xFAfDdbb3FC7688494971a79cc65DCa3EF82079E7` | 18 |
 
-> **Note:** USDm uses 18 decimals, not 6. `1 USDm = 1000000000000000000` base units.
+> **Note:** USDm uses 18 decimals, not 6. `1 USDm = 1e18` base units.
+
+## Protocol Detection
+
+The client auto-detects which protocol the server speaks:
+
+1. **MPP** — 402 response has `WWW-Authenticate: Payment` header
+2. **x402** — 402 response body has `x402Version`, `accepts`, or `paymentRequirements`
+
+No configuration needed. The client tries the right one automatically.
 
 ## License
 
